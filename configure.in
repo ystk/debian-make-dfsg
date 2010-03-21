@@ -21,6 +21,8 @@ AC_INIT([GNU make],[3.81],[bug-make@gnu.org])
 AC_PREREQ(2.59)
 AC_REVISION([[$Id: configure.in,v 1.142 2006/04/01 06:36:40 psmith Exp $]])
 
+AM_MAINTAINER_MODE
+
 # Autoconf setup
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_SRCDIR(vpath.c)
