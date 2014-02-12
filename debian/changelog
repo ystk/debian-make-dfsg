@@ -1,3 +1,21 @@
+make-dfsg (3.81-8.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * expand.c: Apply patch from Savannah #20033 to fix segfault when
+    using parallel (-j2) make with $(eval).  (Closes: #622644)
+
+ -- Tim Retout <diocles@debian.org>  Mon, 09 Apr 2012 19:36:11 +0100
+
+make-dfsg (3.81-8.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * remake.c, configure.in: prepend multiarch paths to the library path in
+    library_search() when we have a target dependency of '-lfoo', so that
+    this still works when all our libraries are moving to multiarch library
+    directories.  Closes: #618840, LP: #737641.
+
+ -- Steve Langasek <vorlon@debian.org>  Sat, 09 Apr 2011 19:51:46 +0000
+
 make-dfsg (3.81-8) unstable; urgency=low
 
   * New bug fixing release.
