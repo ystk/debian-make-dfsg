@@ -5,21 +5,21 @@
 # Written 91-12-02 through 92-01-01 by Stephen McGee.
 # Modified 92-02-11 through 92-02-22 by Chris Arthur to further generalize.
 #
-# Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-# 2001, 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
+# Copyright (C) 1991-2013 Free Software Foundation, Inc.
 # This file is part of GNU Make.
 #
-# GNU Make is free software; you can redistribute it and/or modify it under the
-# terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2, or (at your option) any later version.
+# GNU Make is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 3 of the License, or (at your option) any later
+# version.
 #
 # GNU Make is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-# A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
 #
 # You should have received a copy of the GNU General Public License along with
-# GNU Make; see the file COPYING.  If not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+# this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # Test driver routines used by a number of test suites, including
@@ -28,7 +28,7 @@
 # this routine controls the whole mess; each test suite sets up a few
 # variables and then calls &toplevel, which does all the real work.
 
-# $Id: test_driver.pl,v 1.19 2006/03/10 02:20:45 psmith Exp $
+# $Id$
 
 
 # The number of test categories we've run
@@ -48,6 +48,12 @@ $tests_passed = 0;
 # Yeesh.  This whole test environment is such a hack!
 $test_passed = 1;
 
+
+# Timeout in seconds.  If the test takes longer than this we'll fail it.
+$test_timeout = 5;
+
+# Path to Perl
+$perl_name = $^X;
 
 # %makeENV is the cleaned-out environment.
 %makeENV = ();
@@ -78,9 +84,10 @@ sub resetENV
 sub toplevel
 {
   # Pull in benign variables from the user's environment
-  #
+
   foreach (# UNIX-specific things
-           'TZ', 'LANG', 'TMPDIR', 'HOME', 'USER', 'LOGNAME', 'PATH',
+           'TZ', 'TMPDIR', 'HOME', 'USER', 'LOGNAME', 'PATH',
+           'LD_LIBRARY_PATH',
            # Purify things
            'PURIFYOPTIONS',
            # Windows NT-specific stuff
@@ -91,6 +98,10 @@ sub toplevel
           ) {
     $makeENV{$_} = $ENV{$_} if $ENV{$_};
   }
+
+  # Make sure our compares are not foiled by locale differences
+
+  $makeENV{LC_ALL} = 'C';
 
   # Replace the environment with the new one
   #
@@ -119,7 +130,7 @@ sub toplevel
 
   &parse_command_line (@ARGV);
 
-  print "OS name = `$osname'\n" if $debug;
+  print "OS name = '$osname'\n" if $debug;
 
   $workpath = "$cwdslash$workdir";
   $scriptpath = "$cwdslash$scriptdir";
@@ -154,7 +165,7 @@ sub toplevel
         $dir = $1;
         push (@rmdirs, $dir);
         -d "$workpath/$dir"
-	   || mkdir ("$workpath/$dir", 0777)
+           || mkdir ("$workpath/$dir", 0777)
            || &error ("Couldn't mkdir $workpath/$dir: $!\n");
       }
     }
@@ -163,7 +174,7 @@ sub toplevel
   {
     print "Finding tests...\n";
     opendir (SCRIPTDIR, $scriptpath)
-	|| &error ("Couldn't opendir $scriptpath: $!\n");
+        || &error ("Couldn't opendir $scriptpath: $!\n");
     @dirs = grep (!/^(\..*|CVS|RCS)$/, readdir (SCRIPTDIR) );
     closedir (SCRIPTDIR);
     foreach $dir (@dirs)
@@ -173,13 +184,13 @@ sub toplevel
       mkdir ("$workpath/$dir", 0777)
            || &error ("Couldn't mkdir $workpath/$dir: $!\n");
       opendir (SCRIPTDIR, "$scriptpath/$dir")
-	  || &error ("Couldn't opendir $scriptpath/$dir: $!\n");
+          || &error ("Couldn't opendir $scriptpath/$dir: $!\n");
       @files = grep (!/^(\..*|CVS|RCS|.*~)$/, readdir (SCRIPTDIR) );
       closedir (SCRIPTDIR);
       foreach $test (@files)
       {
         -d $test and next;
-	push (@TESTS, "$dir/$test");
+        push (@TESTS, "$dir/$test");
       }
     }
   }
@@ -191,7 +202,7 @@ sub toplevel
 
   print "\n";
 
-  &run_each_test;
+  run_all_tests();
 
   foreach $dir (@rmdirs)
   {
@@ -209,7 +220,7 @@ sub toplevel
     print "s" unless $total_tests_failed == 1;
     print " in $categories_failed Categor";
     print ($categories_failed == 1 ? "y" : "ies");
-    print " Failed (See .$diffext files in $workdir dir for details) :-(\n\n";
+    print " Failed (See .$diffext* files in $workdir dir for details) :-(\n\n";
     return 0;
   }
   else
@@ -226,8 +237,9 @@ sub toplevel
 sub get_osname
 {
   # Set up an initial value.  In perl5 we can do it the easy way.
-  #
   $osname = defined($^O) ? $^O : '';
+
+  # Find a path to Perl
 
   # See if the filesystem supports long file names with multiple
   # dots.  DOS doesn't.
@@ -263,15 +275,15 @@ sub get_osname
     eval "chop (\$osname = `sh -c 'uname -nmsr 2>&1'`)";
     if ($osname =~ /not found/i)
     {
-	$osname = "(something unixy with no uname)";
+        $osname = "(something posixy with no uname)";
     }
     elsif ($@ ne "" || $?)
     {
         eval "chop (\$osname = `sh -c 'uname -a 2>&1'`)";
         if ($@ ne "" || $?)
         {
-	    $osname = "(something unixy)";
-	}
+            $osname = "(something posixy)";
+        }
     }
     $vos = 0;
     $pathsep = "/";
@@ -403,124 +415,133 @@ sub print_banner
   print "\n";
 }
 
-sub run_each_test
+sub run_all_tests
 {
-  $categories_run = 0;
+    $categories_run = 0;
 
-  foreach $testname (sort @TESTS)
-  {
-    ++$categories_run;
-    $suite_passed = 1;       # reset by test on failure
-    $num_of_logfiles = 0;
-    $num_of_tmpfiles = 0;
-    $description = "";
-    $details = "";
-    $old_makefile = undef;
-    $testname =~ s/^$scriptpath$pathsep//;
-    $perl_testname = "$scriptpath$pathsep$testname";
-    $testname =~ s/(\.pl|\.perl)$//;
-    $testpath = "$workpath$pathsep$testname";
-    # Leave enough space in the extensions to append a number, even
-    # though it needs to fit into 8+3 limits.
-    if ($short_filenames) {
-      $logext = 'l';
-      $diffext = 'd';
-      $baseext = 'b';
-      $extext = '';
-    } else {
-      $logext = 'log';
-      $diffext = 'diff';
-      $baseext = 'base';
-      $extext = '.';
+    foreach $testname (sort @TESTS) {
+        $suite_passed = 1;       # reset by test on failure
+        $num_of_logfiles = 0;
+        $num_of_tmpfiles = 0;
+        $description = "";
+        $details = "";
+        $old_makefile = undef;
+        $testname =~ s/^$scriptpath$pathsep//;
+        $perl_testname = "$scriptpath$pathsep$testname";
+        $testname =~ s/(\.pl|\.perl)$//;
+        $testpath = "$workpath$pathsep$testname";
+        # Leave enough space in the extensions to append a number, even
+        # though it needs to fit into 8+3 limits.
+        if ($short_filenames) {
+            $logext = 'l';
+            $diffext = 'd';
+            $baseext = 'b';
+            $runext = 'r';
+            $extext = '';
+        } else {
+            $logext = 'log';
+            $diffext = 'diff';
+            $baseext = 'base';
+            $runext = 'run';
+            $extext = '.';
+        }
+        $log_filename = "$testpath.$logext";
+        $diff_filename = "$testpath.$diffext";
+        $base_filename = "$testpath.$baseext";
+        $run_filename = "$testpath.$runext";
+        $tmp_filename = "$testpath.$tmpfilesuffix";
+
+        setup_for_test();
+
+        $output = "........................................................ ";
+
+        substr($output,0,length($testname)) = "$testname ";
+
+        print $output;
+
+        $tests_run = 0;
+        $tests_passed = 0;
+
+        # Run the test!
+        $code = do $perl_testname;
+
+        ++$categories_run;
+        $total_tests_run += $tests_run;
+        $total_tests_passed += $tests_passed;
+
+        # How did it go?
+        if (!defined($code)) {
+            # Failed to parse or called die
+            if (length ($@)) {
+                warn "\n*** Test died ($testname): $@\n";
+            } else {
+                warn "\n*** Couldn't parse $perl_testname\n";
+            }
+            $status = "FAILED ($tests_passed/$tests_run passed)";
+        }
+
+        elsif ($code == -1) {
+            # Skipped... not supported
+            $status = "N/A";
+            --$categories_run;
+        }
+
+        elsif ($code != 1) {
+            # Bad result... this shouldn't really happen.  Usually means that
+            # the suite forgot to end with "1;".
+            warn "\n*** Test returned $code\n";
+            $status = "FAILED ($tests_passed/$tests_run passed)";
+        }
+
+        elsif ($tests_run == 0) {
+            # Nothing was done!!
+            $status = "FAILED (no tests found!)";
+        }
+
+        elsif ($tests_run > $tests_passed) {
+            # Lose!
+            $status = "FAILED ($tests_passed/$tests_run passed)";
+        }
+
+        else {
+            # Win!
+            ++$categories_passed;
+            $status = "ok     ($tests_passed passed)";
+
+            # Clean up
+            for ($i = $num_of_tmpfiles; $i; $i--) {
+                rmfiles($tmp_filename . num_suffix($i));
+            }
+            for ($i = $num_of_logfiles ? $num_of_logfiles : 1; $i; $i--) {
+                rmfiles($log_filename . num_suffix($i));
+                rmfiles($base_filename . num_suffix($i));
+            }
+        }
+
+        # If the verbose option has been specified, then a short description
+        # of each test is printed before displaying the results of each test
+        # describing WHAT is being tested.
+
+        if ($verbose) {
+            if ($detail) {
+                print "\nWHAT IS BEING TESTED\n";
+                print "--------------------";
+            }
+            print "\n\n$description\n\n";
+        }
+
+        # If the detail option has been specified, then the details of HOW
+        # the test is testing what it says it is testing in the verbose output
+        # will be displayed here before the results of the test are displayed.
+
+        if ($detail) {
+            print "\nHOW IT IS TESTED\n";
+            print "----------------";
+            print "\n\n$details\n\n";
+        }
+
+        print "$status\n";
     }
-    $log_filename = "$testpath.$logext";
-    $diff_filename = "$testpath.$diffext";
-    $base_filename = "$testpath.$baseext";
-    $tmp_filename = "$testpath.$tmpfilesuffix";
-
-    &setup_for_test;          # suite-defined
-
-    $output = "........................................................ ";
-
-    substr($output,0,length($testname)) = "$testname ";
-
-    print $output;
-
-    # Run the actual test!
-    $tests_run = 0;
-    $tests_passed = 0;
-    $code = do $perl_testname;
-
-    $total_tests_run += $tests_run;
-    $total_tests_passed += $tests_passed;
-
-    # How did it go?
-    if (!defined($code))
-    {
-      $suite_passed = 0;
-      if (length ($@)) {
-        warn "\n*** Test died ($testname): $@\n";
-      } else {
-        warn "\n*** Couldn't run $perl_testname\n";
-      }
-    }
-    elsif ($code == -1) {
-      $suite_passed = 0;
-    }
-    elsif ($code != 1 && $code != -1) {
-      $suite_passed = 0;
-      warn "\n*** Test returned $code\n";
-    }
-
-    if ($suite_passed) {
-      ++$categories_passed;
-      $status = "ok     ($tests_passed passed)";
-      for ($i = $num_of_tmpfiles; $i; $i--)
-      {
-        &rmfiles ($tmp_filename . &num_suffix ($i) );
-      }
-
-      for ($i = $num_of_logfiles ? $num_of_logfiles : 1; $i; $i--)
-      {
-        &rmfiles ($log_filename . &num_suffix ($i) );
-        &rmfiles ($base_filename . &num_suffix ($i) );
-      }
-    }
-    elsif (!defined $code || $code > 0) {
-      $status = "FAILED ($tests_passed/$tests_run passed)";
-    }
-    elsif ($code < 0) {
-      $status = "N/A";
-      --$categories_run;
-    }
-
-    # If the verbose option has been specified, then a short description
-    # of each test is printed before displaying the results of each test
-    # describing WHAT is being tested.
-
-    if ($verbose)
-    {
-      if ($detail)
-      {
-        print "\nWHAT IS BEING TESTED\n";
-        print "--------------------";
-      }
-      print "\n\n$description\n\n";
-    }
-
-    # If the detail option has been specified, then the details of HOW
-    # the test is testing what it says it is testing in the verbose output
-    # will be displayed here before the results of the test are displayed.
-
-    if ($detail)
-    {
-      print "\nHOW IT IS TESTED\n";
-      print "----------------";
-      print "\n\n$details\n\n";
-    }
-
-    print "$status\n";
-  }
 }
 
 # If the keep flag is not set, this subroutine deletes all filenames that
@@ -543,12 +564,10 @@ sub print_standard_usage
   local($plname,@moreusage) = @_;
   local($line);
 
-  print "Usage:  perl $plname [testname] [-verbose] [-detail] [-keep]\n";
-  print "                               [-profile] [-usage] [-help] "
-      . "[-debug]\n";
-  foreach $line (@moreusage)
-  {
-    print "                               $line\n";
+  print "usage:\t$plname [testname] [-verbose] [-detail] [-keep]\n";
+  print "\t\t\t[-profile] [-usage] [-help] [-debug]\n";
+  foreach (@moreusage) {
+    print "\t\t\t$_\n";
   }
 }
 
@@ -639,30 +658,43 @@ sub compare_output
   local($answer,$logfile) = @_;
   local($slurp, $answer_matched) = ('', 0);
 
-  print "Comparing Output ........ " if $debug;
-
-  $slurp = &read_file_into_string ($logfile);
-
-  # For make, get rid of any time skew error before comparing--too bad this
-  # has to go into the "generic" driver code :-/
-  $slurp =~ s/^.*modification time .*in the future.*\n//gm;
-  $slurp =~ s/^.*Clock skew detected.*\n//gm;
-
   ++$tests_run;
 
-  if ($slurp eq $answer) {
-    $answer_matched = 1;
+  if (! defined $answer) {
+      print "Ignoring output ........ " if $debug;
+      $answer_matched = 1;
   } else {
-    # See if it is a slash or CRLF problem
-    local ($answer_mod) = $answer;
+      print "Comparing Output ........ " if $debug;
 
-    $answer_mod =~ tr,\\,/,;
-    $answer_mod =~ s,\r\n,\n,gs;
+      $slurp = &read_file_into_string ($logfile);
 
-    $slurp =~ tr,\\,/,;
-    $slurp =~ s,\r\n,\n,gs;
+      # For make, get rid of any time skew error before comparing--too bad this
+      # has to go into the "generic" driver code :-/
+      $slurp =~ s/^.*modification time .*in the future.*\n//gm;
+      $slurp =~ s/^.*Clock skew detected.*\n//gm;
 
-    $answer_matched = ($slurp eq $answer_mod);
+      if ($slurp eq $answer) {
+          $answer_matched = 1;
+      } else {
+          # See if it is a slash or CRLF problem
+          local ($answer_mod, $slurp_mod) = ($answer, $slurp);
+
+          $answer_mod =~ tr,\\,/,;
+          $answer_mod =~ s,\r\n,\n,gs;
+
+          $slurp_mod =~ tr,\\,/,;
+          $slurp_mod =~ s,\r\n,\n,gs;
+
+          $answer_matched = ($slurp_mod eq $answer_mod);
+
+          # If it still doesn't match, see if the answer might be a regex.
+          if (!$answer_matched && $answer =~ m,^/(.+)/$,) {
+              $answer_matched = ($slurp =~ /$1/);
+              if (!$answer_matched && $answer_mod =~ m,^/(.+)/$,) {
+                  $answer_matched = ($slurp_mod =~ /$1/);
+              }
+          }
+      }
   }
 
   if ($answer_matched && $test_passed)
@@ -676,6 +708,7 @@ sub compare_output
     print "DIFFERENT OUTPUT\n" if $debug;
 
     &create_file (&get_basefile, $answer);
+    &create_file (&get_runfile, $command_string);
 
     print "\nCreating Difference File ...\n" if $debug;
 
@@ -685,7 +718,6 @@ sub compare_output
     &run_command_with_output(&get_difffile,$command);
   }
 
-  $suite_passed = 0;
   return 0;
 }
 
@@ -705,6 +737,9 @@ sub read_file_into_string
   return $slurp;
 }
 
+my @OUTSTACK = ();
+my @ERRSTACK = ();
+
 sub attach_default_output
 {
   local ($filename) = @_;
@@ -717,17 +752,16 @@ sub attach_default_output
     return 1;
   }
 
-  open ("SAVEDOS" . $default_output_stack_level . "out", ">&STDOUT")
-        || &error ("ado: $! duping STDOUT\n", 1);
-  open ("SAVEDOS" . $default_output_stack_level . "err", ">&STDERR")
-        || &error ("ado: $! duping STDERR\n", 1);
+  my $dup = undef;
+  open($dup, '>&', STDOUT) or error("ado: $! duping STDOUT\n", 1);
+  push @OUTSTACK, $dup;
 
-  open (STDOUT, "> " . $filename)
-        || &error ("ado: $filename: $!\n", 1);
-  open (STDERR, ">&STDOUT")
-        || &error ("ado: $filename: $!\n", 1);
+  $dup = undef;
+  open($dup, '>&', STDERR) or error("ado: $! duping STDERR\n", 1);
+  push @ERRSTACK, $dup;
 
-  $default_output_stack_level++;
+  open(STDOUT, '>', $filename) or error("ado: $filename: $!\n", 1);
+  open(STDERR, ">&STDOUT") or error("ado: $filename: $!\n", 1);
 }
 
 # close the current stdout/stderr, and restore the previous ones from
@@ -744,23 +778,47 @@ sub detach_default_output
     return 1;
   }
 
-  if (--$default_output_stack_level < 0)
-  {
-    &error ("default output stack has flown under!\n", 1);
+  @OUTSTACK or error("default output stack has flown under!\n", 1);
+
+  close(STDOUT);
+  close(STDERR);
+
+  open (STDOUT, '>&', pop @OUTSTACK) or error("ddo: $! duping STDOUT\n", 1);
+  open (STDERR, '>&', pop @ERRSTACK) or error("ddo: $! duping STDERR\n", 1);
+}
+
+# This runs a command without any debugging info.
+sub _run_command
+{
+  my $code;
+
+  # We reset this before every invocation.  On Windows I think there is only
+  # one environment, not one per process, so I think that variables set in
+  # test scripts might leak into subsequent tests if this isn't reset--???
+  resetENV();
+
+  eval {
+      my $pid = fork();
+      if (! $pid) {
+          exec(@_) or die "Cannot execute $_[0]\n";
+      }
+      local $SIG{ALRM} = sub { my $e = $ERRSTACK[0]; print $e "\nTest timed out after $test_timeout seconds\n"; die "timeout\n"; };
+      alarm $test_timeout;
+      waitpid($pid, 0) > 0 or die "No such pid: $pid\n";
+      $code = $?;
+      alarm 0;
+  };
+  if ($@) {
+      # The eval failed.  If it wasn't SIGALRM then die.
+      $@ eq "timeout\n" or die "Command failed: $@";
+
+      # Timed out.  Resend the alarm to our process group to kill the children.
+      $SIG{ALRM} = 'IGNORE';
+      kill -14, $$;
+      $code = 14;
   }
 
-  close (STDOUT);
-  close (STDERR);
-
-  open (STDOUT, ">&SAVEDOS" . $default_output_stack_level . "out")
-        || &error ("ddo: $! duping STDOUT\n", 1);
-  open (STDERR, ">&SAVEDOS" . $default_output_stack_level . "err")
-        || &error ("ddo: $! duping STDERR\n", 1);
-
-  close ("SAVEDOS" . $default_output_stack_level . "out")
-        || &error ("ddo: $! closing SCSDOSout\n", 1);
-  close ("SAVEDOS" . $default_output_stack_level . "err")
-         || &error ("ddo: $! closing SAVEDOSerr\n", 1);
+  return $code;
 }
 
 # run one command (passed as a list of arg 0 - n), returning 0 on success
@@ -768,16 +826,9 @@ sub detach_default_output
 
 sub run_command
 {
-  local ($code);
-
-  # We reset this before every invocation.  On Windows I think there is only
-  # one environment, not one per process, so I think that variables set in
-  # test scripts might leak into subsequent tests if this isn't reset--???
-  resetENV();
-
   print "\nrun_command: @_\n" if $debug;
-  $code = system @_;
-  print "run_command: \"@_\" returned $code.\n" if $debug;
+  my $code = _run_command(@_);
+  print "run_command returned $code.\n" if $debug;
 
   return $code;
 }
@@ -789,19 +840,17 @@ sub run_command
 
 sub run_command_with_output
 {
-  local ($filename) = shift;
-  local ($code);
+  my $filename = shift;
 
-  # We reset this before every invocation.  On Windows I think there is only
-  # one environment, not one per process, so I think that variables set in
-  # test scripts might leak into subsequent tests if this isn't reset--???
-  resetENV();
-
+  print "\nrun_command_with_output($filename,$runname): @_\n" if $debug;
   &attach_default_output ($filename);
-  $code = system @_;
+  my $code = eval { _run_command(@_) };
+  my $err = $@;
   &detach_default_output;
 
-  print "run_command_with_output: '@_' returned $code.\n" if $debug;
+  $err and die $err;
+
+  print "run_command_with_output returned $code.\n" if $debug;
 
   return $code;
 }
@@ -900,7 +949,7 @@ sub touch
 
   foreach $file (@_) {
     (open(T, ">> $file") && print(T "\n") && close(T))
-	|| &error("Couldn't touch $file: $!\n", 1);
+        || &error("Couldn't touch $file: $!\n", 1);
   }
 }
 
@@ -1168,6 +1217,15 @@ sub get_basefile
 sub get_difffile
 {
   return ($diff_filename . &num_suffix ($num_of_logfiles));
+}
+
+# This subroutine returns a command filename with a number appended
+# to the end corresponding to how many logfiles (and thus command files)
+# have been created in the current running test.
+
+sub get_runfile
+{
+  return ($run_filename . &num_suffix ($num_of_logfiles));
 }
 
 # just like logfile, only a generic tmp filename for use by the test.

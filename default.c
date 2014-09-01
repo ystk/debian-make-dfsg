@@ -1,22 +1,23 @@
 /* Data base of default implicit rules for GNU Make.
-Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006 Free Software
-Foundation, Inc.
+Copyright (C) 1988-2013 Free Software Foundation, Inc.
 This file is part of GNU Make.
 
 GNU Make is free software; you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2, or (at your option) any later version.
+Foundation; either version 3 of the License, or (at your option) any later
+version.
 
 GNU Make is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
-GNU Make; see the file COPYING.  If not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.  */
+this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include "make.h"
+#include "makeint.h"
+
+#include <assert.h>
+
 #include "filedef.h"
 #include "variable.h"
 #include "rule.h"
@@ -32,8 +33,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.  */
 
 
 /* This is the default list of suffixes for suffix rules.
-   `.s' must come last, so that a `.o' file will be made from
-   a `.c' or `.p' or ... file rather than from a .s file.  */
+   '.s' must come last, so that a '.o' file will be made from
+   a '.c' or '.p' or ... file rather than from a .s file.  */
 
 static char default_suffixes[]
 #ifdef VMS
@@ -41,11 +42,11 @@ static char default_suffixes[]
 .s .ss .i .ii .mod .sym .def .h .info .dvi .tex .texinfo .texi .txinfo \
 .w .ch .cweb .web .com .sh .elc .el";
 #elif defined(__EMX__)
-  = ".out .a .ln .o .c .cc .C .cpp .p .f .F .r .y .l .s .S \
+  = ".out .a .ln .o .c .cc .C .cpp .p .f .F .m .r .y .l .ym .yl .s .S \
 .mod .sym .def .h .info .dvi .tex .texinfo .texi .txinfo \
 .w .ch .web .sh .elc .el .obj .exe .dll .lib";
 #else
-  = ".out .a .ln .o .c .cc .C .cpp .p .f .F .r .y .l .s .S \
+  = ".out .a .ln .o .c .cc .C .cpp .p .f .F .m .r .y .l .ym .yl .s .S \
 .mod .sym .def .h .info .dvi .tex .texinfo .texi .txinfo \
 .w .ch .web .sh .elc .el";
 #endif
@@ -53,23 +54,23 @@ static char default_suffixes[]
 static struct pspec default_pattern_rules[] =
   {
     { "(%)", "%",
-	"$(AR) $(ARFLAGS) $@ $<" },
+        "$(AR) $(ARFLAGS) $@ $<" },
 
     /* The X.out rules are only in BSD's default set because
-       BSD Make has no null-suffix rules, so `foo.out' and
-       `foo' are the same thing.  */
+       BSD Make has no null-suffix rules, so 'foo.out' and
+       'foo' are the same thing.  */
 #ifdef VMS
     { "%.exe", "%",
         "copy $< $@" },
 #else
     { "%.out", "%",
-	"@rm -f $@ \n cp $< $@" },
+        "@rm -f $@ \n cp $< $@" },
 #endif
     /* Syntax is "ctangle foo.w foo.ch foo.c".  */
     { "%.c", "%.w %.ch",
-	"$(CTANGLE) $^ $@" },
+        "$(CTANGLE) $^ $@" },
     { "%.tex", "%.w %.ch",
-	"$(CWEAVE) $^ $@" },
+        "$(CWEAVE) $^ $@" },
 
     { 0, 0, 0 }
   };
@@ -88,21 +89,21 @@ static struct pspec default_terminal_rules[] =
         "if f$$search($@) .nes. \"\" then +$(CHECKOUT,v)" },
 
     /* SCCS.  */
-	/* ain't no SCCS on vms */
+        /* ain't no SCCS on vms */
 #else
     /* RCS.  */
     { "%", "%,v",
-	"$(CHECKOUT,v)" },
+        "$(CHECKOUT,v)" },
     { "%", "RCS/%,v",
-	"$(CHECKOUT,v)" },
+        "$(CHECKOUT,v)" },
     { "%", "RCS/%",
-	"$(CHECKOUT,v)" },
+        "$(CHECKOUT,v)" },
 
     /* SCCS.  */
     { "%", "s.%",
-	"$(GET) $(GFLAGS) $(SCCS_OUTPUT_OPTION) $<" },
+        "$(GET) $(GFLAGS) $(SCCS_OUTPUT_OPTION) $<" },
     { "%", "SCCS/s.%",
-	"$(GET) $(GFLAGS) $(SCCS_OUTPUT_OPTION) $<" },
+        "$(GET) $(GFLAGS) $(SCCS_OUTPUT_OPTION) $<" },
 #endif /* !VMS */
     { 0, 0, 0 }
   };
@@ -192,6 +193,8 @@ static char *default_suffix_rules[] =
     "$(LINK.cpp) $^ $(LOADLIBES) $(LDLIBS) -o $@",
     ".f",
     "$(LINK.f) $^ $(LOADLIBES) $(LDLIBS) -o $@",
+    ".m",
+    "$(LINK.m) $^ $(LOADLIBES) $(LDLIBS) -o $@",
     ".p",
     "$(LINK.p) $^ $(LOADLIBES) $(LDLIBS) -o $@",
     ".F",
@@ -221,6 +224,8 @@ static char *default_suffix_rules[] =
     "$(COMPILE.cpp) $(OUTPUT_OPTION) $<",
     ".f.o",
     "$(COMPILE.f) $(OUTPUT_OPTION) $<",
+    ".m.o",
+    "$(COMPILE.m) $(OUTPUT_OPTION) $<",
     ".p.o",
     "$(COMPILE.p) $(OUTPUT_OPTION) $<",
     ".F.o",
@@ -249,15 +254,18 @@ static char *default_suffix_rules[] =
 #endif
     ".l.c",
     "@$(RM) $@ \n $(LEX.l) $< > $@",
+    ".ym.m",
+    "$(YACC.m) $< \n mv -f y.tab.c $@",
+    ".lm.m",
+    "@$(RM) $@ \n $(LEX.m) $< > $@",
 
     ".F.f",
     "$(PREPROCESS.F) $(OUTPUT_OPTION) $<",
     ".r.f",
     "$(PREPROCESS.r) $(OUTPUT_OPTION) $<",
 
-    /* This might actually make lex.yy.c if there's no %R%
-       directive in $*.l, but in that case why were you
-       trying to make $*.r anyway?  */
+    /* This might actually make lex.yy.c if there's no %R% directive in $*.l,
+       but in that case why were you trying to make $*.r anyway?  */
     ".l.r",
     "$(LEX.l) $< > $@ \n mv -f lex.yy.r $@",
 
@@ -286,13 +294,13 @@ static char *default_suffix_rules[] =
     "$(TEXI2DVI) $(TEXI2DVI_FLAGS) $<",
 
     ".w.c",
-    "$(CTANGLE) $< - $@",	/* The `-' says there is no `.ch' file.  */
+    "$(CTANGLE) $< - $@",       /* The '-' says there is no '.ch' file.  */
 
     ".web.p",
     "$(TANGLE) $<",
 
     ".w.tex",
-    "$(CWEAVE) $< - $@",	/* The `-' says there is no `.ch' file.  */
+    "$(CWEAVE) $< - $@",        /* The '-' says there is no '.ch' file.  */
 
     ".web.tex",
     "$(WEAVE) $<",
@@ -302,7 +310,7 @@ static char *default_suffix_rules[] =
     0, 0,
   };
 
-static char *default_variables[] =
+static const char *default_variables[] =
   {
 #ifdef VMS
 #ifdef __ALPHA
@@ -394,13 +402,15 @@ static char *default_variables[] =
 #ifdef GCC_IS_NATIVE
     "CC", "gcc",
 # ifdef __MSDOS__
-    "CXX", "gpp",	/* g++ is an invalid name on MSDOS */
+    "CXX", "gpp",       /* g++ is an invalid name on MSDOS */
 # else
     "CXX", "gcc",
 # endif /* __MSDOS__ */
+    "OBJC", "gcc",
 #else
     "CC", "cc",
     "CXX", "g++",
+    "OBJC", "cc",
 #endif
 
     /* This expands to $(CO) $(COFLAGS) $< $@ if $@ does not exist,
@@ -410,17 +420,17 @@ static char *default_variables[] =
     "COFLAGS", "",
 
     "CPP", "$(CC) -E",
-#ifdef	CRAY
+#ifdef  CRAY
     "CF77PPFLAGS", "-P",
     "CF77PP", "/lib/cpp",
     "CFT", "cft77",
     "CF", "cf77",
     "FC", "$(CF)",
-#else	/* Not CRAY.  */
-#ifdef	_IBMR2
+#else   /* Not CRAY.  */
+#ifdef  _IBMR2
     "FC", "xlf",
 #else
-#ifdef	__convex__
+#ifdef  __convex__
     "FC", "fc",
 #else
     "FC", "f77",
@@ -430,7 +440,7 @@ static char *default_variables[] =
        However, there is no way to make implicit rules use them and FC.  */
     "F77", "$(FC)",
     "F77FLAGS", "$(FFLAGS)",
-#endif	/* Cray.  */
+#endif  /* Cray.  */
     "GET", SCCS_GET,
     "LD", "ld",
 #ifdef GCC_IS_NATIVE
@@ -440,20 +450,20 @@ static char *default_variables[] =
 #endif
     "LINT", "lint",
     "M2C", "m2c",
-#ifdef	pyr
+#ifdef  pyr
     "PC", "pascal",
 #else
-#ifdef	CRAY
+#ifdef  CRAY
     "PC", "PASCAL",
     "SEGLDR", "segldr",
 #else
     "PC", "pc",
-#endif	/* CRAY.  */
-#endif	/* pyr.  */
+#endif  /* CRAY.  */
+#endif  /* pyr.  */
 #ifdef GCC_IS_NATIVE
     "YACC", "bison -y",
 #else
-    "YACC", "yacc",	/* Or "bison -y"  */
+    "YACC", "yacc",     /* Or "bison -y"  */
 #endif
     "MAKEINFO", "makeinfo",
     "TEX", "tex",
@@ -468,6 +478,8 @@ static char *default_variables[] =
     "LINK.o", "$(CC) $(LDFLAGS) $(TARGET_ARCH)",
     "COMPILE.c", "$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c",
     "LINK.c", "$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)",
+    "COMPILE.m", "$(OBJC) $(OBJCFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c",
+    "LINK.m", "$(OBJC) $(OBJCFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)",
     "COMPILE.cc", "$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c",
     "COMPILE.C", "$(COMPILE.cc)",
     "COMPILE.cpp", "$(COMPILE.cc)",
@@ -476,6 +488,8 @@ static char *default_variables[] =
     "LINK.cpp", "$(LINK.cc)",
     "YACC.y", "$(YACC) $(YFLAGS)",
     "LEX.l", "$(LEX) $(LFLAGS) -t",
+    "YACC.m", "$(YACC) $(YFLAGS)",
+    "LEX.m", "$(LEX) $(LFLAGS) -t",
     "COMPILE.f", "$(FC) $(FFLAGS) $(TARGET_ARCH) -c",
     "LINK.f", "$(FC) $(FFLAGS) $(LDFLAGS) $(TARGET_ARCH)",
     "COMPILE.F", "$(FC) $(FFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c",
@@ -495,25 +509,27 @@ static char *default_variables[] =
     "PREPROCESS.r", "$(FC) $(FFLAGS) $(RFLAGS) $(TARGET_ARCH) -F",
     "LINT.c", "$(LINT) $(LINTFLAGS) $(CPPFLAGS) $(TARGET_ARCH)",
 
-#ifndef	NO_MINUS_C_MINUS_O
+#ifndef NO_MINUS_C_MINUS_O
     "OUTPUT_OPTION", "-o $@",
 #endif
 
-#ifdef	SCCS_GET_MINUS_G
+#ifdef  SCCS_GET_MINUS_G
     "SCCS_OUTPUT_OPTION", "-G$@",
 #endif
 
-#ifdef _AMIGA
+#if defined(_AMIGA)
     ".LIBPATTERNS", "%.lib",
-#else
-#ifdef __MSDOS__
+#elif defined(__MSDOS__)
     ".LIBPATTERNS", "lib%.a $(DJDIR)/lib/lib%.a",
+#elif defined(__APPLE__)
+    ".LIBPATTERNS", "lib%.dylib lib%.a",
 #else
     ".LIBPATTERNS", "lib%.so lib%.a",
 #endif
-#endif
 
 #endif /* !VMS */
+    /* Make this assignment to avoid undefined variable warnings.  */
+    "GNUMAKEFLAGS", "",
     0, 0
   };
 
@@ -522,44 +538,48 @@ static char *default_variables[] =
 void
 set_default_suffixes (void)
 {
-  suffix_file = enter_file (".SUFFIXES");
+  suffix_file = enter_file (strcache_add (".SUFFIXES"));
+  suffix_file->builtin = 1;
 
   if (no_builtin_rules_flag)
-    (void) define_variable ("SUFFIXES", 8, "", o_default, 0);
+    define_variable_cname ("SUFFIXES", "", o_default, 0);
   else
     {
+      struct dep *d;
       char *p = default_suffixes;
-      suffix_file->deps = (struct dep *)
-	multi_glob (parse_file_seq (&p, '\0', sizeof (struct dep), 1),
-		    sizeof (struct dep));
-      (void) define_variable ("SUFFIXES", 8, default_suffixes, o_default, 0);
+      suffix_file->deps = enter_prereqs (PARSE_SIMPLE_SEQ (&p, struct dep),
+                                         NULL);
+      for (d = suffix_file->deps; d; d = d->next)
+        d->file->builtin = 1;
+
+      define_variable_cname ("SUFFIXES", default_suffixes, o_default, 0);
     }
 }
 
 /* Enter the default suffix rules as file rules.  This used to be done in
    install_default_implicit_rules, but that loses because we want the
-   suffix rules installed before reading makefiles, and thee pattern rules
+   suffix rules installed before reading makefiles, and the pattern rules
    installed after.  */
 
 void
 install_default_suffix_rules (void)
 {
-  register char **s;
+  char **s;
 
   if (no_builtin_rules_flag)
     return;
 
- for (s = default_suffix_rules; *s != 0; s += 2)
+  for (s = default_suffix_rules; *s != 0; s += 2)
     {
-      register struct file *f = enter_file (s[0]);
-      /* Don't clobber cmds given in a makefile if there were any.  */
-      if (f->cmds == 0)
-	{
-	  f->cmds = (struct commands *) xmalloc (sizeof (struct commands));
-	  f->cmds->fileinfo.filenm = 0;
-	  f->cmds->commands = s[1];
-	  f->cmds->command_lines = 0;
-	}
+      struct file *f = enter_file (strcache_add (s[0]));
+      /* This function should run before any makefile is parsed.  */
+      assert (f->cmds == 0);
+      f->cmds = xmalloc (sizeof (struct commands));
+      f->cmds->fileinfo.filenm = 0;
+      f->cmds->commands = s[1];
+      f->cmds->command_lines = 0;
+      f->cmds->recipe_prefix = RECIPEPREFIX_DEFAULT;
+      f->builtin = 1;
     }
 }
 
@@ -569,7 +589,7 @@ install_default_suffix_rules (void)
 void
 install_default_implicit_rules (void)
 {
-  register struct pspec *p;
+  struct pspec *p;
 
   if (no_builtin_rules_flag)
     return;
@@ -584,11 +604,20 @@ install_default_implicit_rules (void)
 void
 define_default_variables (void)
 {
-  register char **s;
+  const char **s;
 
   if (no_builtin_variables_flag)
     return;
 
   for (s = default_variables; *s != 0; s += 2)
-    (void) define_variable (s[0], strlen (s[0]), s[1], o_default, 1);
+    define_variable (s[0], strlen (s[0]), s[1], o_default, 1);
+}
+
+void
+undefine_default_variables (void)
+{
+  const char **s;
+
+  for (s = default_variables; *s != 0; s += 2)
+    undefine_variable_global (s[0], strlen (s[0]), o_default);
 }
