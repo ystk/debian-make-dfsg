@@ -1,5 +1,69 @@
+make-dfsg (4.0-1) experimental; urgency=low
+
+  WARNING: Backward-incompatibility!
+  If .POSIX is specified, then make adheres to the POSIX backslash/newline
+  handling requirements, which introduces the following changes to the
+  standard backslash/newline handling in non-recipe lines:
+  * Any trailing space before the backslash is preserved
+  * Each backslash/newline (plus subsequent whitespace) is converted to a
+    single space
+
+ -- Manoj Srivastava <srivasta@debian.org>  Sat, 12 Apr 2014 23:56:34 -0700
+
+make-dfsg (3.82-1) experimental; urgency=low
+
+  * New upstream release. A complete list of bugs fixed in this version is
+    available here:  http://sv.gnu.org/bugs/index.php?group=make&report_id=111&fix_release_id=104&set=custom
+  * WARNING: Future backward-incompatibility!
+    Wildcards are not documented as returning sorted values, but up to and
+    including this release the results have been sorted and some makefiles
+    are apparently depending on that.  In the next release of GNU make,
+    for performance reasons, we may remove that sorting.  If your
+    makefiles require sorted results from wildcard expansions, use the
+    $(sort ...)  function to request it explicitly.
+  * WARNING: Backward-incompatibility!
+    The POSIX standard for make was changed in the 2008 version in a
+    fundamentally incompatible way: make is required to invoke the shell
+    as if the '-e' flag were provided.  Because this would break many
+    makefiles that have been written to conform to the original text of
+    the standard, the default behavior of GNU make remains to invoke the
+    shell with simply '-c'.  However, any makefile specifying the .POSIX
+    special target will follow the new POSIX standard and pass '-e' to the
+    shell.  See also .SHELLFLAGS below.
+  * WARNING: Backward-incompatibility!
+    The '$?' variable now contains all prerequisites that caused the
+    target to be considered out of date, even if they do not exist
+    (previously only existing targets were provided in $?).
+  * WARNING: Backward-incompatibility!
+    As a result of parser enhancements, three backward-compatibility
+    issues exist: first, a prerequisite containing an "=" cannot be
+    escaped with a backslash any longer.  You must create a variable
+    containing an "=" and use that variable in the prerequisite.  Second,
+    variable names can no longer contain whitespace, unless you put the
+    whitespace in a variable and use the variable.  Third, in previous
+    versions of make it was sometimes not flagged as an error for explicit
+    and pattern targets to appear in the same rule.  Now this is always
+    reported as an error.
+  * WARNING: Backward-incompatibility!
+    The pattern-specific variables and pattern rules are now applied in
+    the shortest stem first order instead of the definition order
+    (variables and rules with the same stem length are still applied in
+    the definition order). This produces the usually-desired behavior
+    where more specific patterns are preferred. To detect this feature
+    search for 'shortest-stem' in the .FEATURES special variable.
+  * WARNING: Backward-incompatibility!
+    The library search behavior has changed to be compatible with the
+    standard linker behavior. Prior to this version for prerequisites
+    specified using the -lfoo syntax make first searched for libfoo.so in
+    the current directory, vpath directories, and system directories. If
+    that didn't yield a match, make then searched for libfoo.a in these
+    directories. Starting with this version make searches first for
+    libfoo.so and then for libfoo.a in each of these directories in order.
+
+ -- Manoj Srivastava <srivasta@debian.org>  Mon, 18 Jul 2011 00:38:04 -0700
+
 make (3.80+3.81.b3.1-1) unstable; urgency=low
-  
+
   * WARNING: Backward-incompatibility! (this may help CDBS users)
     GNU make now implements a generic "second expansion" feature on the
     prerequisites of both explicit and implicit (pattern) rules.  In order
@@ -28,8 +92,8 @@ make (3.80+3.81.b3.1-1) unstable; urgency=low
  -- Manoj Srivastava <srivasta@debian.org>  Mon, 12 Dec 2005 13:38:47 -0600
 
 make (3.80+3.81.b3-1) unstable; urgency=low
-  
-  * WARNING: Backward-incompatibility!  
+
+  * WARNING: Backward-incompatibility!
     GNU make now implements a generic "second expansion" feature on the
     prerequisites of both explicit and implicit (pattern) rules.  After
     all rules have been parsed the prerequisites are expanded again, this
@@ -91,5 +155,5 @@ make (3.80+3.81.b3-1) unstable; urgency=low
        SHELL environment variable given to programs invoked by make.  As
        an enhancement to POSIX, if you export the make variable SHELL then
        it will be set in the environment, just as before.
-  
+
  -- Manoj Srivastava <srivasta@debian.org>  Fri,  9 Dec 2005 21:28:14 -0600

@@ -1,10 +1,133 @@
-make-dfsg (3.81-8.2) unstable; urgency=low
+make-dfsg (4.0-8) unstable; urgency=high
 
-  * Non-maintainer upload.
-  * expand.c: Apply patch from Savannah #20033 to fix segfault when
-    using parallel (-j2) make with $(eval).  (Closes: #622644)
+  * Update the timeout for the fopen fail test to 300 seconds, since the
+    test was taking longer than the default 5 seconds to run. The root
+    cause was discovered by Víctor M. Jáquez L. (Closes: #748657)
+  * Bug fix #748657: "make-dfsg failed to run test: work/misc/fopen-fail.mk",
+    thanks to Yunqiang Su.
 
- -- Tim Retout <diocles@debian.org>  Mon, 09 Apr 2012 19:36:11 +0100
+ -- Manoj Srivastava <srivasta@debian.org>  Fri, 13 Jun 2014 15:54:27 -0700
+
+make-dfsg (4.0-7) unstable; urgency=low
+
+  * There is an issue involving UTF-8 characters and the function
+    find_char_unquote (read.c). The problem in the macro STOP_SET
+    (makeint.h) where a character is converted to an int. Conversion to
+    int is not correct. Characters with codes greater than 0x7f ( in
+    particular in Cyrillic UTF- 8 ) into a large negative number. Thnks to
+    the analysis from Юрий Матронов <ymuser@mail.ru>. This bug was
+    independently reported and fixed upstream, so cherry picking that
+    commit from upstream (which also comes with a test).
+    (Closes: #747764).
+  * added a script that, given a list of targets, will build the first
+    target that actually exists. Script created by Joey Hess.
+    (Closes: #598534).
+  * Bug fix #747764: "make 4.0-5 bug", thanks to Юрий Матронов
+  * Bug fix #598534: "add make-first-existing-target", thanks to Joey Hess
+
+ -- Manoj Srivastava <srivasta@debian.org>  Tue, 13 May 2014 18:22:39 -0700
+
+make-dfsg (4.0-6) unstable; urgency=medium
+
+  * Also create a new binary package, make-guile, which is identical to
+    the make package, but has built in support for Guile a a programming
+    langiage, and adds run time dependencies outside of libc.
+    (Closes: #747615,  #747674).
+  * Bug fix #747615: "Please provide a version with Guile support
+    enabled", thanks to Jose Antonio Ortega Ruiz
+  * Bug fix #747674: "undeterministic build due to missing configure
+    arguments/build-conflicts", thanks to Bernhard R. Link
+
+ -- Manoj Srivastava <srivasta@debian.org>  Sun, 11 May 2014 20:51:24 -0700
+
+make-dfsg (4.0-5) unstable; urgency=low
+
+  * When presented with a very very long command line (e.g. WebKit's linking
+    of libWebCore.la in current git), make fails to execute the command as
+    it doesn't split the command line to fit within the limits. There is a
+    patch used by people to solve this (gentoo, etc). Adam Conrad has
+    provided a patch to fix this.  (Closes: #688601).
+  * Pre-4.0 make had an memory corruption issue that caused repeated
+    execution of a specific makefile to display the cirruption. Running
+    with make 4.0 does not show the issue. (Closes: #682895).
+  * recently, the Multi-Arch: foreign tag was added toth make binary
+    package.  Jakub Wilk pointed out that this is not correct, some of the
+    make interfaces are actually architecture-dependent. Reverting that
+    change.
+  * Bug fix #688601: "fails to execute extraordinarily long command
+    lines", thanks to Daniel Stone
+  * Bug fix #682895: "incorrect variable handling and corruption", thanks
+    to Tim Spriggs
+
+ -- Manoj Srivastava <srivasta@debian.org>  Sun, 04 May 2014 18:13:40 -0700
+
+make-dfsg (4.0-4) unstable; urgency=low
+
+  * Movint this version of make to unstable, All known problems exposed in
+    the archive rebuild have been fixed. There is no change in this
+    version apart from the ditribution change
+
+ -- Manoj Srivastava <srivasta@debian.org>  Fri, 02 May 2014 18:32:32 -0700
+
+make-dfsg (4.0-3) experimental; urgency=medium
+
+  * Cherry pick upstream patch to Propagate correct rule status results.
+  * Bug fix: "New make behaviour confuses dpkg-buildpackages&#39; test for
+    make targets". Fixed by above. (Closes: #746443).
+
+ -- Manoj Srivastava <srivasta@debian.org>  Thu, 01 May 2014 22:09:08 -0700
+
+make-dfsg (4.0-2) experimental; urgency=medium
+
+  * Pull back some patches from upstream git that fix bugs. One of these
+    converts the mixed implicit and explicit rule error into a warning,
+    and that should give us a grace period to fix the Makefiles,
+  * Bug fix: "FTBFS with make 3.82 from experimental", thanks to Daniel
+    Schepler. This package was not reported broken in the archive rebuild:
+    see http://aws-logs.debian.net/ftbfs-logs/results-make4/ (Closes: #720686).
+  * Bug fix: "make 3.82: with -j tries to run receipes without
+    prerequisites yet done", thanks to Bernhard R. Link. This was not seen
+    in the archive rebuild, and the upstream report has ben closed a being
+    fixed in 4.0 (Closes: #722520).
+  * Bug fix: "run dh-autoreconf to update config.{sub,guess} and
+    {libtool,aclocal}.m4", thanks to Wookey. We now do indeed run
+    autoreconf.  (Closes: #689626).
+  * Bug fix: "spurious circular dependency", thanks to Frank Heckenbach
+    Bug fixed in new version.  (Closes: #669968).
+  * Bug fix: "make 3.82: fails to parse archive syntax", thanks to Andrew
+    Shadura (Closes: #675612).
+  * Bug fix: "binary package make lacks &quot;Multi-Arch: foreign&quot;
+    declaration", thanks to Helmut Grohne (Closes: #693926).
+  * Bug fix: "make 3.82 breaks kernel module build: &#39;mixed implicit
+    and normal rules&#39; in linux-headers-*", thanks to Dean Loros
+    (Closes: #635317).
+  * Bug fix: "please package upstream version 4.0", thanks to Andrew
+    Shadura (Closes: #734387).
+  * Bug fix: "optionally echo all commands, even if preceded with @",
+    thanks to Vincent Lefevre (Closes: #451092).
+  * Bug fix: "&quot;Make is a HUGE memory hog&quot;", thanks to Matthias
+    Klose (Closes: #342726).
+
+ -- Manoj Srivastava <srivasta@debian.org>  Mon, 28 Apr 2014 23:57:19 -0700
+
+make-dfsg (4.0-1) experimental; urgency=low
+
+  * New upstream release
+
+ -- Manoj Srivastava <srivasta@debian.org>  Sat, 12 Apr 2014 18:49:59 -0700
+
+make-dfsg (3.82-1) experimental; urgency=low
+
+  * New upstream release. A complete list of bugs fixed in this version is
+    available here:
+  http://sv.gnu.org/bugs/index.php?group=make&report_id=111&fix_release_id=104&set=custom
+  * Bug fix: "parallel (-j2) make with $(eval) construct segfaults",
+    thanks to Bjoern Michaelsen.The fix has been included in the new
+    version.                                          (Closes: #622644).
+  * Bug fix: "improving the package description (again)", thanks to Justin
+    B Rye                                             (Closes: #612195).
+
+ -- Manoj Srivastava <srivasta@debian.org>  Mon, 18 Jul 2011 01:05:46 -0700
 
 make-dfsg (3.81-8.1) unstable; urgency=low
 
@@ -52,7 +175,7 @@ make-dfsg (3.81-6) unstable; urgency=low
                                                         (Closes: #533681).
   * [4ae7fd6]: [topic--override-fix]: Fix override behaviour discrepancies
     target specific override appears to be ignored completely if the
-    variable is passed on the command line. Closes: 524378 
+    variable is passed on the command line. Closes: 524378
     Bug fix: "corner cases in &#39;override&#39; logic for variables",
     thanks to Ron                                        (Closes: #524378).
 
@@ -67,7 +190,7 @@ make-dfsg (3.81-5) unstable; urgency=low
 
 make-dfsg (3.81-4) unstable; urgency=low
 
-  * NMU ack.  double free or corruption bug on file globbing, 419190. 
+  * NMU ack.  double free or corruption bug on file globbing, 419190.
   * Bug fix: "make: Directory Search for Link Libraries does not look in
     /usr/local/lib", thanks to Daniel Barlow.  In the Debian binaries,
     PREFIX is /usr and thus this searches /lib,  /usr/lib and /usr/lib
@@ -119,7 +242,7 @@ make-dfsg (3.80+3.81.rc2-1) unstable; urgency=low
     thanks to Neil Brown. This is really a bug in the kernel build system,
     not make. However, this release defers the change so as not to trigger
     the bug.                                      (Closes: #356552, #356630).
-                                      
+
 
  -- Manoj Srivastava <srivasta@debian.org>  Mon, 20 Mar 2006 15:37:15 -0600
 
@@ -244,10 +367,10 @@ make (3.80-6) unstable; urgency=low
   * make_3.80-5(ia64/unstable): FTBFS: missing build-depends?, Actually,
     no. I got bitten by the non support of build-deps-indep again. I have
     now duplicated the indep dependencies into build depends, so this
-    should now work. 
+    should now work.
   * Added an explanation for the behaviour of make, which demonstrates
     that the dry-run of double colon rules and the behaviour of multi
-    target rules is expected behaviour. 
+    target rules is expected behaviour.
   * Bug fix: "make: strange behavior with multi-target rules", thanks to
     Ian Zimmerman. Not a bug, as documented in the explanations file
     referred to above.                                  (Closes: #218367).
@@ -302,7 +425,7 @@ make (3.80-1) unstable; urgency=low
     just having a workaround.                                closes: Bug#160174
   * depend on coreutils rather than the deprecated fileutils closes: Bug#161449
   * The new release also fixes this bug.          closes: Bug#144306, Bug#80783
-  
+
     * A new feature exists: order-only prerequisites.  These prerequisites
       affect the order in which targets are built, but they do not impact
       the rebuild/no-rebuild decision of their dependents.  That is to say,
@@ -405,13 +528,13 @@ make (3.79.1-13) unstable; urgency=low
 
 make (3.79.1-12) unstable; urgency=low
 
-  * Fixed lintian warnings. 
+  * Fixed lintian warnings.
   * added upstream location to the description.
   * The upstream author has clarified that the behaviour described is not
     a bug, but a consciously chosen tone. Theere is a workaround  to this
     problem: (put the "include b.mak" _inside_ of the a.mak file, so that
     GNU make won't see it until after it includes a.mak, whereupon it will
-    also know how to build b.mak).                           closes: Bug#62051 
+    also know how to build b.mak).                           closes: Bug#62051
 
  -- Manoj Srivastava <srivasta@debian.org>  Sat, 26 Jan 2002 00:01:26 -0600
 
@@ -425,7 +548,7 @@ make (3.79.1-11) unstable; urgency=low
   * All variable and function expansion for targets and prerequisite lists
     occurs when the makefile is read in, well before any sort of pattern
     expansion occurs; so these functions are operating on the static
-    string "%", not the string it will expand to after pattern matching.  
+    string "%", not the string it will expand to after pattern matching.
                                                              closes: Bug#110728
 
  -- Manoj Srivastava <srivasta@debian.org>  Sun,  6 Jan 2002 01:45:51 -0600
@@ -467,7 +590,7 @@ make (3.79.1-8) unstable; urgency=low
 
 make (3.79.1-7) unstable; urgency=low
 
-  * Updated config.sub/config.gues from a recent version. This 
+  * Updated config.sub/config.gues from a recent version. This
     closes: Bug#99122
 
  -- Manoj Srivastava <srivasta@debian.org>  Wed,  4 Jul 2001 20:36:22 -0500
@@ -490,7 +613,7 @@ make (3.79.1-4) unstable; urgency=medium
   * GNgngngng. The last upload is broken, thanks to the autoconf
     breakage. This also breaks fakeroot, since make tries to add/drop seteuid
     priviledges when it shouldn't. closes: #84201
-    closes: Bug#84184, Bug#84182, Bug#84185, Bug#84179, Bug#84198 
+    closes: Bug#84184, Bug#84182, Bug#84185, Bug#84179, Bug#84198
 
  -- Manoj Srivastava <srivasta@debian.org>  Tue, 30 Jan 2001 19:45:58 -0600
 
@@ -500,8 +623,8 @@ make (3.79.1-3) unstable; urgency=medium
     /dev/mem to make processes in a mistaken assumption that one needs to
     be setgid kmem to read loadaverages on linux. This version has been
     built with a modified autoconf not to do that, and as a precaution
-    does not install make setgid kmem. 
-  * Make sure the binary is stripped as per lintian requirements. 
+    does not install make setgid kmem.
+  * Make sure the binary is stripped as per lintian requirements.
 
  -- Manoj Srivastava <srivasta@debian.org>  Tue, 30 Jan 2001 15:16:49 -0600
 
@@ -522,7 +645,7 @@ make (3.79.1-1.potato.1) stable; urgency=low
     MAKEFILES variable, this closes: Bug#71261
   * I have heard rimours that the old make did not correctly build libc
     either, and one needs this version. I can't say for sure, since no bug
-    was ever filed. 
+    was ever filed.
 
  -- Manoj Srivastava <srivasta@debian.org>  Mon, 11 Sep 2000 14:04:10 -0500
 
@@ -560,11 +683,11 @@ make (3.79-1) unstable; urgency=low
 
   * New upstream release, adds fixes already present in Debian. This
     closes: Bug#62619
-    changes are: 
+    changes are:
      * GNU make optionally supports internationalization and locales via
        the GNU gettext (or local gettext if suitable) package.  See the
        ABOUT-NLS file for more information on configuring GNU make for
-       NLS.  
+       NLS.
      * Previously, GNU make quoted variables such as MAKEFLAGS and
        MAKEOVERRIDES for proper parsing by the shell.  This allowed them to
        be used within make build scripts.  However, using them there is not
@@ -572,12 +695,12 @@ make (3.79-1) unstable; urgency=low
        environment.  Unfortunately the values were not quoted properly to be
        passed through the environment.  This meant that make didn't properly
        pass some types of command line values to submakes.
-   
+
        With this version we change that behavior: now these variables are
        quoted properly for passing through the environment, which is the
        correct way to do it.  If you previously used these variables
        explicitly within a make rule you may need to re-examine your use for
-       correctness given this change.     
+       correctness given this change.
      * A new psuedo-target .NOTPARALLEL is available.  If defined, the
        current makefile is run serially regardless of the value of -j.
        However, submakes are still eligible for parallel execution.
@@ -586,9 +709,9 @@ make (3.79-1) unstable; urgency=low
        a minimal amount information is generated, displaying the names of
        "normal" targets (not makefiles) were deemed out of date and in need
        of being rebuilt.
-     
+
        Note that the -d option behaves as before: it takes no arguments and
-       all debugging information is generated.     
+       all debugging information is generated.
      * The `-p' (print database) output now includes filename and linenumber
        information for variable definitions, to help debugging.
      * The wordlist function no longer reverses its arguments if the "start"
@@ -618,8 +741,8 @@ make (3.78.1-7) frozen unstable; urgency=low
 
 make (3.78.1-6) frozen unstable; urgency=high
 
-  * Use mkstemp where available. This fixes a security bug in make. 
-    The bug report does not seem to have made its way into the bts yet. 
+  * Use mkstemp where available. This fixes a security bug in make.
+    The bug report does not seem to have made its way into the bts yet.
 
  -- Manoj Srivastava <srivasta@debian.org>  Fri, 11 Feb 2000 18:07:20 -0600
 
@@ -627,7 +750,7 @@ make (3.78.1-5) frozen unstable; urgency=low
 
   * The postinst was vulnerable to being affected by symlinks (if, for
     some reason, the prerm failed). This has happended for latex2html; and
-    created a grave bug. 
+    created a grave bug.
   * There was a bug in the postinst in a case statement, that caused
     installation to fail for certain situations.
   * Also fixed an lintian warning
@@ -646,18 +769,18 @@ make (3.78.1-3) unstable; urgency=low
 
   * Release to fold in NMU fixed bugs. closes: Bug#47686, #47362, #49137, #49381
   * Changed the root check to look for uid 0, not the username root (think
-    sashroot or toor) 
+    sashroot or toor)
 
  -- Manoj Srivastava <srivasta@debian.org>  Thu,  3 Feb 2000 02:06:06 -0600
 
 Old Changelog:
-  
+
 make (3.78.1-1.1) unstable; urgency=low
 
    * Non maintainer upload.
    * Changed debian/docentry to point to /usr/share/doc instead of
      /usr/doc (closes: #47686, #47362, #49137, #49381).
-  
+
  -- Torsten Landschoff <torsten@debian.org> Sun,  21 Nov 1999 01:30:56 +0100
 
 make (3.78.1-2) unstable; urgency=low
@@ -672,7 +795,7 @@ make (3.78.1-2) unstable; urgency=low
 make (3.78.1-1.1) unstable; urgency=low
 
   * Non maintainer upload.
-  * Changed debian/docentry to point to /usr/share/doc instead of 
+  * Changed debian/docentry to point to /usr/share/doc instead of
     /usr/doc (closes: #47686, #47362, #49137, #49381).
 
  -- Torsten Landschoff <torsten@debian.org>  Sun, 21 Nov 1999 01:30:56 +0100
@@ -716,7 +839,7 @@ make (3.77-4) frozen unstable; urgency=medium
 make (3.77-3) frozen unstable; urgency=high
 
   * Appled more patches to fix the glob problem with the new glibc. patch
-    provided by Christopher C Chimelis <chris@classnet.med.miami.edu>. 
+    provided by Christopher C Chimelis <chris@classnet.med.miami.edu>.
     closes: BUG#28723, BUG#28724
 
  -- Manoj Srivastava <srivasta@debian.org>  Tue,  3 Nov 1998 17:47:55 -0600
@@ -742,7 +865,7 @@ make (3.77-1) unstable; urgency=low
       Modifying this variable has no effect on the operation of make.
     * Make defines a new default RCS rule, for new-style master file
       storage: ``% :: RCS/%'' (note no ``,v'' suffix).
-    
+
       Make defines new default rules for DOS-style C++ file naming
       conventions, with ``.cpp'' suffixes.  All the same rules as for
       ``.cc'' and ``.C'' suffixes are provided, along with LINK.cpp and
@@ -752,14 +875,14 @@ make (3.77-1) unstable; urgency=low
     * A new feature, "target-specific variable values", has been added.
       This is a large change so please see the appropriate sections of the
       manual for full details.  Briefly, syntax like this:
-    
+
          TARGET: VARIABLE = VALUE
-    
+
       defines VARIABLE as VALUE within the context of TARGET.  This is
       similar to SunOS make's "TARGET := VARIABLE = VALUE" feature.  Note
       that the assignment may be of any type, not just recursive, and that
       the override keyword is available.
-    
+
       COMPATIBILITY: This new syntax means that if you have any rules where
       the first or second dependency has an equal sign (=) in its name,
       you'll have to escape them with a backslash: "foo : bar\=baz".
@@ -805,8 +928,8 @@ make (3.76.1-5) unstable; urgency=low
 
 make (3.76.1-4) unstable; urgency=low
 
-  * Make sure the copyright file is not compressed. 
-    closes:Bug#14426,Bug#14427 
+  * Make sure the copyright file is not compressed.
+    closes:Bug#14426,Bug#14427
 
  -- Manoj Srivastava <srivasta@debian.org>  Wed,  5 Nov 1997 11:53:03 -0600
 
@@ -816,7 +939,7 @@ make (3.76.1-3) unstable; urgency=low
     aclocal.m4 file (already present in the upstream sources) to override
     the function that checks for libelf. This should now not create a
     spurious dependency on libelfg0 even if the gremlins cause automake to
-    be run to recreate configure. 
+    be run to recreate configure.
 
  -- Manoj Srivastava <srivasta@debian.org>  Wed, 29 Oct 1997 14:22:37 -0600
 
@@ -830,7 +953,7 @@ make (3.76.1-2) unstable; urgency=low
 make (3.76.1-1) unstable; urgency=low
 
   * Small (but serious) bug fix. main.c (main): Arg count should be int,
-    not char!  Major braino. 
+    not char!  Major braino.
   * changes to upstream Makefiles
 
  -- Manoj Srivastava <srivasta@debian.org>  Fri,  3 Oct 1997 11:53:45 -0500
@@ -922,7 +1045,7 @@ make (3.75-0) unstable; urgency=low
 
   * Changed to the new format.
   * New upstream version
-  
+
  -- Manoj Srivastava <srivasta@debian.org>  Thu, 7 Nov 1996 17:42:34 -0600
 
 make (3.74-12) unstable; urgency=low
@@ -936,6 +1059,4 @@ make (3.74-12) unstable; urgency=low
   * Fixed the description field not to include multiple contiguous
     spaces
 
-  -- Manoj Srivastava <srivasta@debian.org>  
-
-
+  -- Manoj Srivastava <srivasta@debian.org>
