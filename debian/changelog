@@ -1,3 +1,12 @@
+make-dfsg (4.0-8.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Skip the work/misc/fopen-fail.mk as it is testing the underlying
+    machine, not the built code from the package and is machine-dependent.
+    (Closes: #748657)
+
+ -- Neil Williams <codehelp@debian.org>  Sat, 17 Jan 2015 18:30:17 +0000
+
 make-dfsg (4.0-8) unstable; urgency=high
 
   * Update the timeout for the fopen fail test to 300 seconds, since the
